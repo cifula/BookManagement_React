@@ -3,8 +3,6 @@ import { Navigate } from 'react-router-dom';
 import { authenticatedState } from '../../../atoms/Auth/AuthAtom';
 import { useRecoilState } from 'recoil';
 import axios from 'axios';
-import { useQuery } from 'react-query';
-import { getAuthenticated } from './../../../api/auth/authApi';
 
 
 const validateToken = async (accessToken) => {
@@ -13,13 +11,11 @@ const validateToken = async (accessToken) => {
 }
 
 const AuthRoute = ({ path, element }) => {
-    const accessToken = localStorage.getItem("accessToken");
     const [ authenticated, setAuthenticated ] = useRecoilState(authenticatedState);
-    const { data, isLoading, isError } = useQuery("authenticatedApi", getAuthenticated);
-    setAuthenticated(data);
     const permitAll = ["/login", "/register", "/password/forgot"]
-
+    
     if(!authenticated) {
+        const accessToken = localStorage.getItem("accessToken");
         if(accessToken !== null) {
             validateToken(accessToken).then((flag) => {
                 setAuthenticated(flag);
