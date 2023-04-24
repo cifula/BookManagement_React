@@ -115,15 +115,6 @@ const Register = () => {
         } catch(error) {
             setErrorMessages({email: "", password: "", name: "", ...error.response.data.errorData});
         }
-        
-        // .then(response => {
-        //     setErrorMessages({email: "", password: "", name: ""});
-        //     console.log(response);
-        // })
-        // .catch(error => {
-        //     setErrorMessages({email: "", password: "", name: "", ...error.response.data.errorData});
-        // });
-
     }
 
     return (
