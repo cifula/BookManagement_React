@@ -17,7 +17,7 @@ const sidebar = (isOpen) => css`
     width: 250px;
     box-shadow: -1px 0px 5px #dbdbdb;
     transition: left 1s ease;
-
+    background-color: white;
     ${isOpen ? "" :
         `cursor: pointer;`
     }
