@@ -5,6 +5,8 @@ import Sidebar from './../../components/Sidebar/Sidebar';
 import BookCard from './../../components/UI/BookCard/BookCard';
 import axios from 'axios';
 import { useQuery } from 'react-query';
+import { BsMenuDown } from 'react-icons/bs';
+import QueryString from 'qs';
 
 const mainContanier = css`
     padding: 10px;
@@ -16,6 +18,52 @@ const header = css`
     height: 100px;
 `;
 
+const title = css`
+    font-size: 35px;
+    font-weight: 600;
+`;
+
+const searchItems = css`
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+`;
+
+const categoryButton = css`
+    position: relative;
+    border: 1px solid #dbdbdb;
+    border-radius: 5px;
+    width: 30px;
+    height: 30px;
+    background-color: white;
+    cursor: pointer;
+`;
+
+const categoryGroup = (isOpen) => css`
+    position: absolute;
+    top: 30px;
+    right: -151px;
+    display: ${isOpen ? "flex" : "none"};
+    flex-direction: column;
+    align-items: flex-start;
+    border: 1px solid #dbdbdb;
+    border-radius: 4px;
+    padding: 5px;
+    width: 180px;
+    max-height: 100px;
+    padding: 10px;
+    background-color: white;
+    overflow-y: auto;
+`;
+
+const searchInput = css`
+    border: 1px solid #dbdbdb;
+    border-radius: 7px;
+    padding: 5px;
+    width: 150px;
+    height: 30px;
+`;
+
 const main = css`
     display: flex;
     flex-wrap: wrap;
@@ -25,16 +73,20 @@ const main = css`
 
 
 const Main = () => {
-    const [ searchParam, setSearchParam ] = useState({page: 1, searchValue: "", categoryId: 0});
+    const [ searchParam, setSearchParam ] = useState({page: 1, searchValue: "", categoryIds: []});
     const [ refresh, setRefresh ] = useState(false);
+    const [ categoryRefresh, setCategoryRefresh ] = useState(true);
+    const [ isOpen, setIsOpen ] = useState(false);
     const [ books, setBooks ] = useState([]);
+    const [ lastPage, setLastPage ] = useState(1);
+    const [ totalPage, setTotalPage ] = useState(0);
     const lastBookRef = useRef();
+    const categoryButtonRef = useRef();
     
     useEffect(() => {
         const observerService = (entries, observer) => {
             entries.forEach(entry => {
                 if(entry.isIntersecting) {
-                    console.log("마지막 요소를 발견함");
                     setRefresh(true);
                 }
             })
@@ -49,7 +101,8 @@ const Main = () => {
         params: searchParam,
         headers: {
             Authorization: localStorage.getItem("accessToken")
-        }
+        },
+        paramsSerializer: params => QueryString.stringify(params, {arrayFormat: 'repeat'})
     }
     const searchBooks = useQuery(["searchBooks"], async () => {
         const response = await axios.get("http://localhost:8080/books", option);
@@ -59,22 +112,100 @@ const Main = () => {
             if(refresh) {
                 setRefresh(false);
             }
+            const totalCount = response.data.totalCount;
 
-            setBooks([...books, ...response.data])
+            setLastPage(totalCount % 20 === 0 ? totalCount / 20 : Math.ceil(totalCount / 20));
+            setBooks([...books, ...response.data.bookList]);
             setSearchParam({...searchParam, page: searchParam.page + 1});
         },
-        enabled: refresh
+        enabled: refresh && (searchParam.page < lastPage + 1 || lastPage === 0)
     });
 
+    const categories = useQuery(["categories"], async () => {
+        const option = {
+            headers: {
+                Authorization: localStorage.getItem("accessToken")
+            }
+        }
+        const response = await axios.get("http://localhost:8080/categories", option);
+        return response
+    }, {
+        enabled: categoryRefresh,
+        onSuccess: () => {
+            if(categoryRefresh) {
+                setCategoryRefresh(false);
+            }
+        }
+    });
 
+    const categoryClickHandle = (e) => {
+        if(isOpen) {
+            setIsOpen(false);
+        } else {
+            setIsOpen(true);
+        }
+    }
+
+    const stopEventHandle = (e) => {
+        e.stopPropagation();
+    }
+
+    const categoryCheckHandle = (e) => {
+        if(e.target.checked) {
+            setSearchParam({
+                ...searchParam,
+                page: 1,
+                categoryIds: [...searchParam.categoryIds, e.target.value]
+            });
+        } else {
+            setSearchParam({
+                ...searchParam, 
+                page: 1,
+                categoryIds: [...searchParam.categoryIds.filter(id => id !== e.target.value)]
+            });
+        }
+        
+        setBooks([]);
+        setRefresh(true);
+    }
+
+    const searchInputHandle = (e) => {
+        setSearchParam({
+            ...searchParam,
+            searchValue: e.target.value
+        });
+    }
+
+    const searchSubmitHandle = (e) => {
+        if(e.keyCode === 13) {
+            setSearchParam({
+                ...searchParam,
+                page: 1
+            });
+            setBooks([]);
+            setRefresh(true);
+        }
+    }
 
     return (
         <div css={mainContanier}>
             <Sidebar />
             <header css={header}>
-                <div>도서검색</div>
-                <div>
-                    <input type="search" />
+                <div css={title}>도서검색</div>
+                <div css={searchItems}>
+                    <button css={categoryButton} onClick={categoryClickHandle} ref={categoryButtonRef}>
+                        <BsMenuDown />
+                        <div css={categoryGroup(isOpen)} onClick={stopEventHandle}>
+                            {categories.data !== undefined
+                                ? categories.data.data.map(category => 
+                                    (<div key={category.categoryId}>
+                                        <input type='checkbox' onChange={categoryCheckHandle} id={"ct-" + category.categoryId} value={category.categoryId} />
+                                        <label htmlFor={"ct-" + category.categoryId}>{category.categoryName}</label>
+                                    </div> ))
+                                    : ""}
+                        </div>
+                    </button>
+                    <input css={searchInput} type="search" onKeyUp={searchSubmitHandle} onChange={searchInputHandle}/>
                 </div>
             </header>
             <main css={main}>
