@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { GrFormClose } from 'react-icons/gr';
 import ListButton from './ListButton/ListButton';
 import { BiHome, BiLike, BiListUl, BiLogOut } from 'react-icons/bi';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import axios from 'axios';
 
 const sidebar = (isOpen) => css`
@@ -98,15 +98,7 @@ const footer = css`
 
 const Sidebar = () => {
     const [ isOpen, setIsOpen ] = useState(false);
-    const { data, isLoading } = useQuery(["principal"], async () => {
-        const accessToken = localStorage.getItem("accessToken");
-        const response = await axios.get("http://localhost:8080/auth/principal",
-        {params: {accessToken}},
-        {
-            enabled: accessToken
-        });
-        return response;
-    });
+    const queryClient = useQueryClient();
 
     const sidebarOpenClickHandle = () => {
         if(!isOpen) {
@@ -124,20 +116,22 @@ const Sidebar = () => {
         }
     }
 
-    if(isLoading) {
+
+    if(queryClient.getQueryState("principal").status === "loading") {
         return (<div>로딩중...</div>);
     }
 
-    if(!isLoading)
+    const principalData = queryClient.getQueryData("principal").data;
+
     return (
         <div css={sidebar(isOpen)} onClick={sidebarOpenClickHandle} >
             <header css={header}>
                 <div css={userIcon}>
-                    {data.data.name.substr(0, 1)}
+                    {principalData.name.substr(0, 1)}
                 </div>
                 <div css={userInfo}>
-                    <h1 css={userName}>{data.data.name}</h1>
-                    <p css={userEmail}>{data.data.email}</p>
+                    <h1 css={userName}>{principalData.name}</h1>
+                    <p css={userEmail}>{principalData.email}</p>
                 </div>
                 <div css={closeButton} onClick={sidebarCloseClickHandle}><GrFormClose/></div>
             </header>
